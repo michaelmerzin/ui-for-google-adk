@@ -2,7 +2,8 @@ import { useCallback } from "react";
 import toast from "react-hot-toast";
 import { chatApi, sessionsApi, type MessageOut } from "../api/client";
 import { useAuthStore } from "../store/authStore";
-import { useChatStore } from "../store/chatStore";
+import { useChatStore, type MessageWithSteps } from "../store/chatStore";
+import type { AgentStep } from "../components/AgentSteps";
 
 let msgIdCounter = Date.now();
 const tempId = () => ++msgIdCounter;
@@ -13,16 +14,14 @@ export function useChat() {
     selectedModel,
     appendMessage,
     updateLastAssistantMessage,
+    appendStepToLastMessage,
     setLoading,
     setSessions,
-    updateSession,
-    sessions,
     addSession,
     setActiveSession,
     setMessages,
   } = useChatStore();
 
-  const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
 
   const loadSessions = useCallback(async () => {
@@ -46,30 +45,22 @@ export function useChat() {
     return data;
   }, [addSession, selectedModel, setActiveSession, setMessages]);
 
-  const deleteSession = useCallback(
-    async (id: string) => {
-      await sessionsApi.remove(id);
-      useChatStore.getState().removeSession(id);
-      toast.success("Session deleted");
-    },
-    []
-  );
+  const deleteSession = useCallback(async (id: string) => {
+    await sessionsApi.remove(id);
+    useChatStore.getState().removeSession(id);
+    toast.success("Session deleted");
+  }, []);
 
-  const renameSession = useCallback(
-    async (id: string, title: string) => {
-      const { data } = await sessionsApi.update(id, { title });
-      updateSession(data);
-    },
-    [updateSession]
-  );
+  const renameSession = useCallback(async (id: string, title: string) => {
+    const { data } = await sessionsApi.update(id, { title });
+    useChatStore.getState().updateSession(data);
+  }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim()) return;
 
       let sessionId = activeSessionId;
-
-      // Auto-create session if none active
       if (!sessionId) {
         const session = await createSession();
         sessionId = session.id;
@@ -78,7 +69,7 @@ export function useChat() {
       setLoading(true);
 
       // Optimistic user message
-      const userMsg: MessageOut = {
+      const userMsg: MessageWithSteps = {
         id: tempId(),
         role: "user",
         content: text,
@@ -87,33 +78,27 @@ export function useChat() {
       };
       appendMessage(userMsg);
 
-      // Placeholder assistant message for streaming
-      const assistantPlaceholder: MessageOut = {
+      // Assistant placeholder
+      const assistantPlaceholder: MessageWithSteps = {
         id: tempId(),
         role: "assistant",
         content: "",
         tool_name: null,
         created_at: new Date().toISOString(),
+        steps: [],
       };
       appendMessage(assistantPlaceholder);
 
       try {
-        // Try streaming first via EventSource-compatible fetch
-        const streamed = await streamMessage(
+        await streamMessage(
           sessionId,
           text,
           selectedModel,
           accessToken,
-          updateLastAssistantMessage
+          updateLastAssistantMessage,
+          appendStepToLastMessage
         );
 
-        if (!streamed) {
-          // Non-streaming fallback
-          const { data } = await chatApi.send(sessionId, text, selectedModel);
-          updateLastAssistantMessage(data.content);
-        }
-
-        // Refresh session list to update title + message count
         const { data: updatedSessions } = await sessionsApi.list();
         setSessions(updatedSessions);
       } catch (err: any) {
@@ -125,74 +110,71 @@ export function useChat() {
       }
     },
     [
-      activeSessionId,
-      selectedModel,
-      accessToken,
-      appendMessage,
-      createSession,
-      setLoading,
-      setSessions,
-      updateLastAssistantMessage,
+      activeSessionId, selectedModel, accessToken,
+      appendMessage, appendStepToLastMessage,
+      createSession, setLoading, setSessions, updateLastAssistantMessage,
     ]
   );
 
-  return {
-    loadSessions,
-    loadMessages,
-    createSession,
-    deleteSession,
-    renameSession,
-    sendMessage,
-  };
+  return { loadSessions, loadMessages, createSession, deleteSession, renameSession, sendMessage };
 }
+
+// ── SSE streaming with ADK step parsing ───────────────────────────────────────
 
 async function streamMessage(
   sessionId: string,
   message: string,
   model: string,
   token: string | null,
-  onDelta: (content: string) => void
-): Promise<boolean> {
-  try {
-    const resp = await fetch("/api/chat/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ session_id: sessionId, message, model, stream: true }),
-    });
+  onDelta: (content: string) => void,
+  onStep: (step: AgentStep) => void
+): Promise<void> {
+  const resp = await fetch("/api/chat/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ session_id: sessionId, message, model, stream: true }),
+  });
 
-    if (!resp.ok || !resp.body) return false;
+  if (!resp.ok || !resp.body) {
+    throw new Error(`Server error ${resp.status}`);
+  }
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let accumulated = "";
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n");
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n");
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const raw = line.slice(6).trim();
-        if (!raw) continue;
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
 
-        try {
-          const json = JSON.parse(raw);
-          if (json.done) break;
-          if (json.delta) {
-            accumulated += json.delta;
-            onDelta(accumulated);
-          }
-        } catch {}
-      }
+      try {
+        const json = JSON.parse(raw);
+
+        if (json.done) break;
+
+        // ── Text delta ──
+        if (json.delta) {
+          accumulated += json.delta;
+          onDelta(accumulated);
+        }
+
+        // ── ADK step events ──
+        if (json.step) {
+          onStep(json.step as AgentStep);
+        }
+
+      } catch {}
     }
-    return true;
-  } catch {
-    return false;
   }
 }

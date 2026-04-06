@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Settings, Save } from "lucide-react";
+import { X, Settings, Save, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./Modal.module.css";
 
@@ -40,6 +40,7 @@ interface Props {
 
 export default function ConfigModal({ onClose }: Props) {
   const [cfg, setCfg] = useState<AppConfig>(DEFAULTS);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setCfg(loadConfig());
@@ -50,9 +51,15 @@ export default function ConfigModal({ onClose }: Props) {
   }
 
   function handleSave() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-    toast.success("Configuration saved");
-    onClose();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      toast.success("Configuration saved");
+      onClose();
+    } catch (e) {
+      toast.error("Failed to save configuration");
+    }
   }
 
   return (
@@ -71,7 +78,7 @@ export default function ConfigModal({ onClose }: Props) {
         <div className={styles.configBody}>
           {/* LiteLLM */}
           <div className={styles.section}>
-            <div className={styles.sectionLabel}>LiteLLM</div>
+            <div className={styles.sectionLabel}>LiteLLM Proxy</div>
             <div className={styles.configGrid}>
               <div className={styles.configField}>
                 <label>Base URL</label>
@@ -102,7 +109,7 @@ export default function ConfigModal({ onClose }: Props) {
                 <input
                   value={cfg.adkBaseUrl}
                   onChange={(e) => set("adkBaseUrl", e.target.value)}
-                  placeholder="http://localhost:8000"
+                  placeholder="http://localhost:8001"
                 />
               </div>
               <div className={styles.configField}>
@@ -116,7 +123,7 @@ export default function ConfigModal({ onClose }: Props) {
             </div>
           </div>
 
-          {/* Generation params */}
+          {/* Generation */}
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Generation</div>
             <div className={styles.configGrid}>
@@ -154,13 +161,19 @@ export default function ConfigModal({ onClose }: Props) {
               rows={4}
             />
           </div>
+
+          {/* Note */}
+          <div className={styles.configNote}>
+            ⚠️ ADK URL and LiteLLM URL changes also require updating <code>backend/.env</code> and restarting uvicorn to take effect server-side.
+          </div>
         </div>
 
         {/* Footer */}
         <div className={styles.modalFooter}>
           <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
           <button className={styles.saveBtn} onClick={handleSave}>
-            <Save size={14} /> Save Configuration
+            {saved ? <CheckCircle size={14} /> : <Save size={14} />}
+            {saved ? "Saved!" : "Save Configuration"}
           </button>
         </div>
       </div>

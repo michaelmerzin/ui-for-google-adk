@@ -1,0 +1,180 @@
+.root {
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+/* ── Toggle button ── */
+.toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 8px;
+}
+
+.toggle:hover { background: var(--surface3); }
+
+.streaming {
+  cursor: default;
+}
+
+.streaming:hover { background: none; }
+
+.toggleLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinnerWrap {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.doneIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(31, 214, 160, 0.15);
+  border: 1px solid rgba(31, 214, 160, 0.3);
+  color: var(--green);
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggleLabel {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.stepCount {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.chevron {
+  font-size: 9px;
+  color: var(--text3);
+}
+
+/* ── Steps list ── */
+.steps {
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.step {
+  padding: 4px 12px;
+  animation: fadeIn 0.2s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.stepLast .stepLine::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: 6px;
+  animation: pulse 1s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.stepLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepIcon {
+  font-size: 12px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.stepLabel {
+  font-family: var(--mono);
+  font-size: 12px;
+  flex: 1;
+}
+
+.stepDuration {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.detailToggle {
+  background: none;
+  border: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent2);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.stepDetail {
+  margin: 4px 0 4px 24px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Color variants ── */
+.colorThink    { color: var(--text3); }
+.colorTool     { color: var(--accent2); }
+.colorResult   { color: var(--green); }
+.colorTransfer { color: var(--yellow); }
+.colorError    { color: var(--red); }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2, Plus, LogOut, Users, Settings, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
@@ -11,12 +11,24 @@ import styles from "./Sidebar.module.css";
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const { sessions, activeSessionId, setActiveSession, setMessages } = useChatStore();
+  const { sessions, activeSessionId, setActiveSession } = useChatStore();
   const { user, logout } = useAuthStore();
   const { createSession, deleteSession, loadMessages } = useChat();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
 
   async function handleNewSession() {
     await createSession();
@@ -33,9 +45,20 @@ export default function Sidebar() {
   }
 
   function handleLogout() {
+    setMenuOpen(false);
     logout();
     navigate("/login", { replace: true });
     toast.success("Signed out");
+  }
+
+  function openUsers() {
+    setMenuOpen(false);
+    setShowUsers(true);
+  }
+
+  function openConfig() {
+    setMenuOpen(false);
+    setShowConfig(true);
   }
 
   const abbr = user?.username.slice(0, 2).toUpperCase() ?? "??";
@@ -51,34 +74,33 @@ export default function Sidebar() {
           </div>
 
           {/* User menu */}
-          <div className={styles.userMenu} onClick={() => setMenuOpen((o) => !o)}>
-            <div className={styles.avatar}>{abbr}</div>
-            <ChevronDown size={13} color="var(--text3)" />
+          <div ref={menuRef} className={styles.userMenuWrap}>
+            <div className={styles.userMenu} onClick={() => setMenuOpen((o) => !o)}>
+              <div className={styles.avatar}>{abbr}</div>
+              <ChevronDown size={13} color="var(--text3)" />
+            </div>
+
             {menuOpen && (
-              <div className={styles.dropdown} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.dropdown}>
                 <div className={styles.dropdownUser}>
                   <div className={styles.dropdownAvatar}>{abbr}</div>
                   <div>
                     <div className={styles.dropdownName}>{user?.username}</div>
-                    <div className={styles.dropdownRole}>{user?.role}</div>
+                    <div className={styles.dropdownRole}>{user?.role ?? "user"}</div>
                   </div>
                 </div>
                 <div className={styles.dropdownDivider} />
-                {user?.role === "admin" && (
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => { setShowUsers(true); setMenuOpen(false); }}
-                  >
-                    <Users size={14} /> Manage Users
-                  </button>
+                {user !== null && user?.role === "admin" && (
+                  <>
+                    <button className={styles.dropdownItem} onClick={openUsers}>
+                      <Users size={14} /> Manage Users
+                    </button>
+                    <button className={styles.dropdownItem} onClick={openConfig}>
+                      <Settings size={14} /> Configuration
+                    </button>
+                    <div className={styles.dropdownDivider} />
+                  </>
                 )}
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => { setShowConfig(true); setMenuOpen(false); }}
-                >
-                  <Settings size={14} /> Configuration
-                </button>
-                <div className={styles.dropdownDivider} />
                 <button
                   className={`${styles.dropdownItem} ${styles.danger}`}
                   onClick={handleLogout}
@@ -144,14 +166,6 @@ export default function Sidebar() {
 
       {showUsers && <UserMgmtModal onClose={() => setShowUsers(false)} />}
       {showConfig && <ConfigModal onClose={() => setShowConfig(false)} />}
-
-      {/* Close menu on outside click */}
-      {menuOpen && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 50 }}
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
     </>
   );
 }

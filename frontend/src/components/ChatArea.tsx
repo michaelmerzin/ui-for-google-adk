@@ -6,9 +6,7 @@ import styles from "./ChatArea.module.css";
 
 const QUICK_PROMPTS = [
   { icon: "🔧", label: "Available tools", text: "What tools do you have available?" },
-  { icon: "📖", label: "About ADK + LiteLLM", text: "Explain how Google ADK works with LiteLLM" },
-  { icon: "🔍", label: "Web search demo", text: "Run a web search for the latest AI news" },
-  { icon: "🐍", label: "Code generation", text: "Write a Python function to generate Fibonacci numbers" },
+  { icon: "💬", label: "What can I ask?", text: "What questions can I ask you?" },
 ];
 
 export default function ChatArea() {

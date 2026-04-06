@@ -5,9 +5,8 @@
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  height: 100vh;
   position: relative;
-  z-index: 10;
 }
 
 .header {
@@ -17,6 +16,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -45,6 +45,13 @@
   white-space: nowrap;
 }
 
+/* User menu wrapper — keeps dropdown in flow, no overflow clip */
+.userMenuWrap {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 300;
+}
+
 .userMenu {
   display: flex;
   align-items: center;
@@ -53,8 +60,6 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s;
-  position: relative;
-  flex-shrink: 0;
 }
 
 .userMenu:hover { background: var(--surface2); }
@@ -81,8 +86,8 @@
   border-radius: var(--radius);
   padding: 6px;
   min-width: 192px;
-  z-index: 200;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  z-index: 300;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   animation: fadeIn 0.15s ease;
 }
 
@@ -143,7 +148,9 @@
   border: none;
   color: var(--text2);
   font-size: 13px;
+  font-family: var(--sans);
   text-align: left;
+  cursor: pointer;
   transition: background 0.1s, color 0.1s;
 }
 
@@ -163,6 +170,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 8px;
+  flex-shrink: 0;
 }
 
 .sessionsLabel {
@@ -184,6 +192,8 @@
   padding: 5px 10px;
   font-size: 12px;
   font-weight: 700;
+  font-family: var(--sans);
+  cursor: pointer;
   transition: background 0.2s;
 }
 
@@ -215,6 +225,7 @@
   margin-bottom: 2px;
   position: relative;
   border: 1px solid transparent;
+  user-select: none;
 }
 
 .sessionItem:hover { background: var(--surface2); }
@@ -280,6 +291,7 @@
   transition: opacity 0.15s, color 0.15s, background 0.15s;
   display: flex;
   align-items: center;
+  cursor: pointer;
 }
 
 .deleteBtn:hover {
@@ -292,6 +304,7 @@
 .bottom {
   border-top: 1px solid var(--border);
   padding: 10px 14px;
+  flex-shrink: 0;
 }
 
 .versionRow {

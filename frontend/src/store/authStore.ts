@@ -26,7 +26,8 @@ export const useAuthStore = create<AuthState>()(
       partialize: (s) => ({
         accessToken: s.accessToken,
         refreshToken: s.refreshToken,
-        user: s.user,
+        // Do NOT persist user — always re-fetch from /auth/me on load
+        // This ensures role changes take effect immediately
       }),
     }
   )
