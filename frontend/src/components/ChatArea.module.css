@@ -1,0 +1,137 @@
+.area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ── Welcome state ── */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.welcomeIcon {
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 48px rgba(79, 110, 247, 0.22), 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+.welcomeTitle {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 10px;
+}
+
+.welcomeSub {
+  font-size: 14px;
+  color: var(--text2);
+  max-width: 400px;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.quickGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 560px;
+}
+
+.quickBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  font-size: 13px;
+  color: var(--text2);
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.quickBtn:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.quickIcon { font-size: 15px; }
+
+/* ── Messages list ── */
+.messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 28px 0 16px;
+}
+
+/* ── Thinking indicator ── */
+.thinking {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 32px;
+}
+
+.thinkingAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.thinkingBubble {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-bottom-left-radius: 3px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.thinkingBubble span {
+  width: 7px;
+  height: 7px;
+  background: var(--accent2);
+  border-radius: 50%;
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.thinkingBubble span:nth-child(2) { animation-delay: 0.15s; }
+.thinkingBubble span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 1; }
+  30%           { transform: translateY(-6px); opacity: 0.7; }
+}

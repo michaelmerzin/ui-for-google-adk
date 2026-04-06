@@ -1,0 +1,232 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 32px;
+  animation: fadeUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.assistantRow { flex-direction: row; }
+
+.userRow {
+  flex-direction: row-reverse;
+}
+
+/* Avatar */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.botAvatar {
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff;
+}
+
+.userAvatar {
+  background: linear-gradient(135deg, var(--green), #0ea5e9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Group */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: min(680px, calc(100vw - 160px));
+}
+
+.userRow .group { align-items: flex-end; }
+
+/* Bubble */
+.bubble {
+  border-radius: 14px;
+  padding: 13px 17px;
+  font-size: 14px;
+  line-height: 1.7;
+  position: relative;
+  word-break: break-word;
+}
+
+.botBubble {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top-left-radius: 3px;
+  color: var(--text);
+}
+
+.userBubble {
+  background: rgba(79, 110, 247, 0.13);
+  border: 1px solid rgba(79, 110, 247, 0.28);
+  border-top-right-radius: 3px;
+  color: var(--text);
+}
+
+/* Streaming cursor */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent2);
+  margin-left: 2px;
+  vertical-align: middle;
+  border-radius: 1px;
+  animation: blink 0.9s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Streaming dots */
+.streamingDots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.streamingDots span {
+  width: 7px;
+  height: 7px;
+  background: var(--accent2);
+  border-radius: 50%;
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.streamingDots span:nth-child(2) { animation-delay: 0.15s; }
+.streamingDots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-5px); }
+}
+
+/* Meta row */
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  padding: 0 2px;
+}
+
+.dot { color: var(--border2); }
+
+.toolBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(31, 214, 160, 0.08);
+  border: 1px solid rgba(31, 214, 160, 0.2);
+  color: var(--green);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+}
+
+/* Content */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.text {
+  white-space: pre-wrap;
+  display: block;
+}
+
+/* Inline code via dangerouslySetInnerHTML */
+:global(.inline-code) {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent2);
+}
+
+:global(a) {
+  color: var(--accent2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Code block */
+.codeBlock {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.codeLang {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copyBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.copyBtn:hover {
+  color: var(--green);
+  border-color: rgba(31, 214, 160, 0.3);
+  background: rgba(31, 214, 160, 0.05);
+}
+
+.pre {
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--accent2);
+  margin: 0;
+}
+
+.pre code {
+  font-family: inherit;
+}

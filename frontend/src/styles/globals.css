@@ -1,0 +1,85 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #080a10;
+  --surface: #0e1018;
+  --surface2: #141720;
+  --surface3: #1a1e2e;
+  --border: #20253a;
+  --border2: #282e45;
+  --accent: #4f6ef7;
+  --accent2: #7c9bff;
+  --accent-glow: rgba(79, 110, 247, 0.18);
+  --green: #1fd6a0;
+  --green-glow: rgba(31, 214, 160, 0.15);
+  --red: #f75f5f;
+  --yellow: #f7c44f;
+  --text: #e2e5f0;
+  --text2: #7e869f;
+  --text3: #4a5168;
+  --mono: "IBM Plex Mono", monospace;
+  --sans: "Syne", sans-serif;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --sidebar-width: 268px;
+  --topbar-height: 54px;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button { cursor: pointer; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-5px); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-up { animation: fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in { animation: fadeIn 0.2s ease both; }

@@ -1,0 +1,432 @@
+/* ── Overlay ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.18s ease;
+  backdrop-filter: blur(2px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal card ── */
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  animation: modalUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes modalUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Modal header ── */
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.closeBtn:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+/* ── Users table ── */
+.tableWrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 320px;
+  flex: 1;
+}
+
+.loadingRow {
+  padding: 32px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: var(--surface2);
+}
+
+.selfRow td {
+  background: rgba(79, 110, 247, 0.04);
+}
+
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onlineDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.active { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.inactive { background: var(--text3); }
+
+.youBadge {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+}
+
+.roleBadge {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.adminBadge {
+  background: rgba(247, 196, 79, 0.1);
+  border: 1px solid rgba(247, 196, 79, 0.28);
+  color: var(--yellow);
+}
+
+.userBadge {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  color: var(--text3);
+}
+
+.roleSelect {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.roleSelect:focus { border-color: var(--accent); }
+
+.monoCell {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.statusToggle {
+  background: none;
+  border: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.statusActive {
+  color: var(--green);
+}
+
+.statusInactive {
+  color: var(--red);
+}
+
+.statusToggle:hover {
+  background: var(--surface3);
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  padding: 5px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.deleteBtn:hover {
+  color: var(--red);
+  background: rgba(247, 95, 95, 0.1);
+}
+
+/* ── Add user form ── */
+.addForm {
+  border-top: 1px solid var(--border);
+  padding: 16px 22px;
+  flex-shrink: 0;
+}
+
+.addFormTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.formError {
+  background: rgba(247, 95, 95, 0.08);
+  border: 1px solid rgba(247, 95, 95, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 7px 12px;
+  margin-bottom: 10px;
+}
+
+.addFormFields {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.addInput {
+  flex: 1;
+  min-width: 100px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.addInput:focus { border-color: var(--accent); }
+.addInput::placeholder { color: var(--text3); }
+
+.addSelect {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+.addSelect:focus { border-color: var(--accent); }
+
+.addBtn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.addBtn:hover:not(:disabled) { background: #6077f8; }
+.addBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Config modal body ── */
+.configBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section { display: flex; flex-direction: column; gap: 10px; }
+
+.sectionLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.configGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.configField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.configField label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.configField input {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.configField input:focus { border-color: var(--accent); }
+.configField input::placeholder { color: var(--text3); }
+
+.systemPrompt {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s;
+}
+
+.systemPrompt:focus { border-color: var(--accent); }
+
+/* ── Modal footer ── */
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cancelBtn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 9px 18px;
+  color: var(--text2);
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.cancelBtn:hover { background: var(--surface3); }
+
+.saveBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 20px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.saveBtn:hover {
+  background: #6077f8;
+  box-shadow: 0 4px 16px rgba(79, 110, 247, 0.3);
+}
