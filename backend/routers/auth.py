@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import (
@@ -12,6 +12,7 @@ from core.security import (
     verify_password,
 )
 from db.database import get_db
+from db.models import Session as ChatSession
 from db.models import User
 from models.schemas import LoginRequest, RefreshRequest, TokenResponse, UserOut
 from routers.deps import get_current_user
@@ -61,7 +62,16 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserOut)
-async def me(current_user: User = Depends(get_current_user)):
+async def me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Async count query — never access lazy-loaded relationships in async context
+    count_result = await db.execute(
+        select(func.count()).where(ChatSession.user_id == current_user.id)
+    )
+    session_count = count_result.scalar() or 0
+
     return UserOut(
         id=current_user.id,
         username=current_user.username,
@@ -69,5 +79,5 @@ async def me(current_user: User = Depends(get_current_user)):
         is_active=current_user.is_active,
         created_at=current_user.created_at,
         last_login=current_user.last_login,
-        session_count=len(current_user.sessions) if current_user.sessions else 0,
+        session_count=session_count,
     )

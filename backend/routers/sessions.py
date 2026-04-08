@@ -121,3 +121,122 @@ async def get_messages(
         .order_by(Message.created_at)
     )
     return msgs.scalars().all()
+
+
+# ── ADK state proxy ───────────────────────────────────────────────────────────
+
+@router.get("/{session_id}/adk-state")
+async def get_adk_state(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch live session state + events from the ADK server."""
+    import httpx
+    from core.config import settings
+
+    # Verify session belongs to user
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.id == session_id,
+            ChatSession.user_id == current_user.id,
+        )
+    )
+    if not result.scalars().first():
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    empty = {"state": {}, "events": [], "memory": [], "last_update": 0}
+
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(
+                f"{settings.ADK_BASE_URL}/apps/{settings.ADK_AGENT_NAME}"
+                f"/users/{current_user.id}/sessions/{session_id}",
+            )
+            if resp.status_code != 200:
+                return empty
+
+            data = resp.json()
+            raw_state = data.get("state", {})
+            raw_events = data.get("events", [])
+
+            # Parse events into our frontend format
+            parsed_events = []
+            for i, ev in enumerate(raw_events):
+                content = ev.get("content") or {}
+                author = ev.get("author", "unknown")
+                parts = content.get("parts", [])
+                actions = ev.get("actions") or {}
+                state_delta = actions.get("state_delta") or {}
+                ts = ev.get("timestamp", 0)
+
+                # Classify event
+                has_text = any("text" in p for p in parts)
+                has_fc = any("functionCall" in p for p in parts)
+                has_fr = any("functionResponse" in p for p in parts)
+                has_sd = bool(state_delta)
+
+                if author == "user":
+                    text = next((p["text"] for p in parts if "text" in p), "")
+                    parsed_events.append({
+                        "id": ev.get("id", str(i)),
+                        "type": "user",
+                        "label": "user message",
+                        "detail": text[:60] + ("..." if len(text) > 60 else ""),
+                        "timestamp": int(ts * 1000),
+                    })
+                elif has_fc:
+                    for p in parts:
+                        if "functionCall" in p:
+                            fc = p["functionCall"]
+                            args = fc.get("args", {})
+                            arg_str = ", ".join(f"{k}={repr(v)}" for k, v in list(args.items())[:2])
+                            parsed_events.append({
+                                "id": ev.get("id", str(i)) + "_fc",
+                                "type": "tool_call",
+                                "label": f"{fc.get('name', 'tool')}({arg_str})",
+                                "detail": str(args)[:80] if args else None,
+                                "timestamp": int(ts * 1000),
+                            })
+                elif has_fr:
+                    for p in parts:
+                        if "functionResponse" in p:
+                            fr = p["functionResponse"]
+                            resp_data = fr.get("response", {})
+                            status = resp_data.get("status", "done") if isinstance(resp_data, dict) else "done"
+                            parsed_events.append({
+                                "id": ev.get("id", str(i)) + "_fr",
+                                "type": "tool_result",
+                                "label": f"{fr.get('name', 'tool')} → {status}",
+                                "detail": str(resp_data)[:80] if resp_data else None,
+                                "timestamp": int(ts * 1000),
+                            })
+                elif has_sd:
+                    keys = list(state_delta.keys())
+                    parsed_events.append({
+                        "id": ev.get("id", str(i)) + "_sd",
+                        "type": "state_delta",
+                        "label": "state updated",
+                        "detail": ", ".join(keys[:4]) + ("..." if len(keys) > 4 else ""),
+                        "timestamp": int(ts * 1000),
+                    })
+                elif has_text and author != "user":
+                    text = next((p["text"] for p in parts if "text" in p), "")
+                    is_final = ev.get("partial") is False or i == len(raw_events) - 1
+                    parsed_events.append({
+                        "id": ev.get("id", str(i)),
+                        "type": "agent",
+                        "label": "final response" if is_final else "agent thinking",
+                        "detail": text[:60] + ("..." if len(text) > 60 else ""),
+                        "timestamp": int(ts * 1000),
+                    })
+
+            return {
+                "state": raw_state,
+                "events": parsed_events,
+                "memory": [],
+                "last_update": int(raw_events[-1]["timestamp"] * 1000) if raw_events else 0,
+            }
+
+    except Exception:
+        return empty
