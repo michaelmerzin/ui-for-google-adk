@@ -3,8 +3,8 @@ import styles from "./AgentSteps.module.css";
 
 export interface AgentStep {
   type: "thinking" | "tool_call" | "tool_result" | "agent_transfer" | "error";
-  label: string;       // e.g. "search_web"
-  detail?: string;     // e.g. the args or result summary
+  label: string;
+  detail?: string;
   durationMs?: number;
 }
 
@@ -18,17 +18,16 @@ export default function AgentSteps({ steps, isStreaming }: Props) {
 
   if (steps.length === 0) return null;
 
-  const toolCalls = steps.filter(s => s.type === "tool_call").length;
+  const toolCalls = steps.filter((step) => step.type === "tool_call").length;
   const summary = toolCalls > 0
     ? `Used ${toolCalls} tool${toolCalls !== 1 ? "s" : ""}`
     : "Reasoning steps";
 
   return (
     <div className={styles.root}>
-      {/* Collapsed toggle */}
       <button
         className={`${styles.toggle} ${isStreaming ? styles.streaming : ""}`}
-        onClick={() => !isStreaming && setExpanded(e => !e)}
+        onClick={() => !isStreaming && setExpanded((open) => !open)}
       >
         <div className={styles.toggleLeft}>
           {isStreaming ? (
@@ -36,10 +35,10 @@ export default function AgentSteps({ steps, isStreaming }: Props) {
               <span className={styles.spinner} />
             </span>
           ) : (
-            <span className={styles.doneIcon}>✓</span>
+            <span className={styles.doneIcon}>OK</span>
           )}
           <span className={styles.toggleLabel}>
-            {isStreaming ? "Working…" : summary}
+            {isStreaming ? "Working..." : summary}
           </span>
           {!isStreaming && (
             <span className={styles.stepCount}>{steps.length} steps</span>
@@ -50,11 +49,10 @@ export default function AgentSteps({ steps, isStreaming }: Props) {
         )}
       </button>
 
-      {/* Expanded steps list */}
       {(expanded || isStreaming) && (
         <div className={styles.steps}>
-          {steps.map((step, i) => (
-            <StepRow key={i} step={step} isLast={i === steps.length - 1 && isStreaming} />
+          {steps.map((step, index) => (
+            <StepRow key={index} step={step} isLast={index === steps.length - 1 && isStreaming} />
           ))}
         </div>
       )}
@@ -66,19 +64,19 @@ function StepRow({ step, isLast }: { step: AgentStep; isLast: boolean }) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const icon = {
-    thinking:       "💭",
-    tool_call:      "🔧",
-    tool_result:    "✓",
-    agent_transfer: "→",
-    error:          "⚠️",
+    thinking: "TH",
+    tool_call: "TL",
+    tool_result: "OK",
+    agent_transfer: "->",
+    error: "!!",
   }[step.type];
 
   const colorClass = {
-    thinking:       styles.colorThink,
-    tool_call:      styles.colorTool,
-    tool_result:    styles.colorResult,
+    thinking: styles.colorThink,
+    tool_call: styles.colorTool,
+    tool_result: styles.colorResult,
     agent_transfer: styles.colorTransfer,
-    error:          styles.colorError,
+    error: styles.colorError,
   }[step.type];
 
   return (
@@ -92,7 +90,7 @@ function StepRow({ step, isLast }: { step: AgentStep; isLast: boolean }) {
         {step.detail && (
           <button
             className={styles.detailToggle}
-            onClick={() => setDetailOpen(o => !o)}
+            onClick={() => setDetailOpen((open) => !open)}
           >
             {detailOpen ? "hide" : "details"}
           </button>

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import toast from "react-hot-toast";
-import { chatApi, sessionsApi, type MessageOut } from "../api/client";
+import { sessionsApi } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { useChatStore, type MessageWithSteps } from "../store/chatStore";
 import type { AgentStep } from "../components/AgentSteps";
@@ -20,6 +20,7 @@ export function useChat() {
     addSession,
     setActiveSession,
     setMessages,
+    setModel,
   } = useChatStore();
 
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -27,7 +28,18 @@ export function useChat() {
   const loadSessions = useCallback(async () => {
     const { data } = await sessionsApi.list();
     setSessions(data);
-  }, [setSessions]);
+
+    const currentState = useChatStore.getState();
+    const activeSession = data.find((session) => session.id === currentState.activeSessionId);
+    const nextSession = activeSession ?? data[0];
+
+    if (nextSession) {
+      if (currentState.activeSessionId !== nextSession.id) {
+        setActiveSession(nextSession.id);
+      }
+      setModel(nextSession.model);
+    }
+  }, [setActiveSession, setModel, setSessions]);
 
   const loadMessages = useCallback(
     async (sessionId: string) => {
@@ -41,9 +53,10 @@ export function useChat() {
     const { data } = await sessionsApi.create("New Session", selectedModel);
     addSession(data);
     setActiveSession(data.id);
+    setModel(data.model);
     setMessages([]);
     return data;
-  }, [addSession, selectedModel, setActiveSession, setMessages]);
+  }, [addSession, selectedModel, setActiveSession, setMessages, setModel]);
 
   const deleteSession = useCallback(async (id: string) => {
     await sessionsApi.remove(id);
@@ -54,6 +67,13 @@ export function useChat() {
   const renameSession = useCallback(async (id: string, title: string) => {
     const { data } = await sessionsApi.update(id, { title });
     useChatStore.getState().updateSession(data);
+  }, []);
+
+  const updateSessionModel = useCallback(async (id: string, model: string) => {
+    const { data } = await sessionsApi.update(id, { model });
+    const state = useChatStore.getState();
+    state.updateSession(data);
+    state.setModel(model);
   }, []);
 
   const sendMessage = useCallback(
@@ -68,7 +88,6 @@ export function useChat() {
 
       setLoading(true);
 
-      // Optimistic user message
       const userMsg: MessageWithSteps = {
         id: tempId(),
         role: "user",
@@ -78,7 +97,6 @@ export function useChat() {
       };
       appendMessage(userMsg);
 
-      // Assistant placeholder
       const assistantPlaceholder: MessageWithSteps = {
         id: tempId(),
         role: "assistant",
@@ -103,23 +121,35 @@ export function useChat() {
         setSessions(updatedSessions);
       } catch (err: any) {
         const errMsg = err?.response?.data?.detail ?? err?.message ?? "Unknown error";
-        updateLastAssistantMessage(`⚠️ ${errMsg}`);
+        updateLastAssistantMessage(`Warning: ${errMsg}`);
         toast.error("Failed to get response");
       } finally {
         setLoading(false);
       }
     },
     [
-      activeSessionId, selectedModel, accessToken,
-      appendMessage, appendStepToLastMessage,
-      createSession, setLoading, setSessions, updateLastAssistantMessage,
+      accessToken,
+      activeSessionId,
+      appendMessage,
+      appendStepToLastMessage,
+      createSession,
+      selectedModel,
+      setLoading,
+      setSessions,
+      updateLastAssistantMessage,
     ]
   );
 
-  return { loadSessions, loadMessages, createSession, deleteSession, renameSession, sendMessage };
+  return {
+    loadSessions,
+    loadMessages,
+    createSession,
+    deleteSession,
+    renameSession,
+    sendMessage,
+    updateSessionModel,
+  };
 }
-
-// ── SSE streaming with ADK step parsing ───────────────────────────────────────
 
 async function streamMessage(
   sessionId: string,
@@ -144,37 +174,47 @@ async function streamMessage(
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
+  let buffer = "";
   let accumulated = "";
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
 
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n");
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
 
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const raw = line.slice(6).trim();
-      if (!raw) continue;
+    for (const eventChunk of events) {
+      const payload = eventChunk
+        .split("\n")
+        .filter((line) => line.startsWith("data: "))
+        .map((line) => line.slice(6).trim())
+        .join("");
+
+      if (!payload) continue;
 
       try {
-        const json = JSON.parse(raw);
+        const json = JSON.parse(payload);
 
-        if (json.done) break;
+        if (json.done) {
+          return;
+        }
 
-        // ── Text delta ──
         if (json.delta) {
           accumulated += json.delta;
           onDelta(accumulated);
         }
 
-        // ── ADK step events ──
         if (json.step) {
           onStep(json.step as AgentStep);
         }
+      } catch {
+        // Ignore malformed events so a partial chunk does not kill the stream.
+      }
+    }
 
-      } catch {}
+    if (done) {
+      break;
     }
   }
 }

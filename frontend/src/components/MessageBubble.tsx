@@ -1,4 +1,5 @@
-import { Wrench } from "lucide-react";
+import { useState } from "react";
+import { Copy, RotateCcw, Wrench } from "lucide-react";
 import type { MessageWithSteps } from "../store/chatStore";
 import AgentSteps from "./AgentSteps";
 import ResponseRenderer from "./ResponseRenderer";
@@ -11,11 +12,25 @@ interface Props {
 }
 
 export default function MessageBubble({ message, username, isStreaming }: Props) {
+  const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
-  const abbr = isUser ? username.slice(0, 1).toUpperCase() : "⬡";
+  const abbr = isUser ? username.slice(0, 1).toUpperCase() : "AI";
   const time = new Date(message.created_at).toLocaleTimeString([], {
-    hour: "2-digit", minute: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  function handleReusePrompt() {
+    window.dispatchEvent(new CustomEvent("adk:quickprompt", {
+      detail: { text: message.content, autoSend: false },
+    }));
+  }
 
   return (
     <div className={`${styles.row} ${isUser ? styles.userRow : styles.assistantRow}`}>
@@ -24,19 +39,19 @@ export default function MessageBubble({ message, username, isStreaming }: Props)
       </div>
 
       <div className={styles.group}>
-        {/* ── Agent steps (only for assistant) ── */}
         {!isUser && (message.steps?.length ?? 0) > 0 && (
           <AgentSteps
-            steps={message.steps!}
+            steps={message.steps ?? []}
             isStreaming={isStreaming === true && message.content === ""}
           />
         )}
 
-        {/* ── Bubble ── */}
         <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.botBubble}`}>
           {isStreaming && message.content === "" ? (
             <div className={styles.streamingDots}>
-              <span /><span /><span />
+              <span />
+              <span />
+              <span />
             </div>
           ) : isUser ? (
             <span className={styles.userText}>{message.content}</span>
@@ -48,7 +63,6 @@ export default function MessageBubble({ message, username, isStreaming }: Props)
           )}
         </div>
 
-        {/* ── Meta ── */}
         <div className={styles.meta}>
           <span>{isUser ? username : "assistant"}</span>
           <span className={styles.dot}>·</span>
@@ -59,6 +73,24 @@ export default function MessageBubble({ message, username, isStreaming }: Props)
               <span className={styles.toolBadge}>
                 <Wrench size={10} /> {message.tool_name}
               </span>
+            </>
+          )}
+          {message.content && (
+            <>
+              <span className={styles.dot}>·</span>
+              <button className={styles.metaAction} onClick={() => void handleCopy()}>
+                <Copy size={11} />
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </>
+          )}
+          {isUser && message.content && (
+            <>
+              <span className={styles.dot}>·</span>
+              <button className={styles.metaAction} onClick={handleReusePrompt}>
+                <RotateCcw size={11} />
+                Reuse
+              </button>
             </>
           )}
         </div>

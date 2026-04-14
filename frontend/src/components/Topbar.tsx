@@ -1,4 +1,9 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
+import { ChevronDown, PencilLine, PanelRightOpen } from "lucide-react";
+import { chatApi } from "../api/client";
 import { useChatStore } from "../store/chatStore";
+import { useChat } from "../hooks/useChat";
 import styles from "./Topbar.module.css";
 
 interface Props {
@@ -7,37 +12,147 @@ interface Props {
 }
 
 export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
-  const { activeSessionId, sessions } = useChatStore();
-  const activeSession = sessions.find((s: any) => s.id === activeSessionId);
+  const { sessions, activeSessionId, messages, isLoading, selectedModel, setModel } = useChatStore();
+  const { renameSession, updateSessionModel } = useChat();
+  const activeSession = sessions.find((session) => session.id === activeSessionId) ?? null;
+  const [draftTitle, setDraftTitle] = useState(activeSession?.title ?? "ADK Studio");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDraftTitle(activeSession?.title ?? "ADK Studio");
+  }, [activeSession?.title]);
+
+  useEffect(() => {
+    setIsLoadingModels(true);
+    chatApi.models()
+      .then(({ data }) => setModels(data.models))
+      .catch(() => toast.error("Could not load models"))
+      .finally(() => setIsLoadingModels(false));
+  }, []);
+
+  useEffect(() => {
+    if (!isEditingTitle) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [isEditingTitle]);
+
+  const assistantSteps = useMemo(
+    () => messages.flatMap((message) => message.steps ?? []),
+    [messages]
+  );
+  const toolCount = assistantSteps.filter((step) => step.type === "tool_call").length;
+  const transferCount = assistantSteps.filter((step) => step.type === "agent_transfer").length;
+
+  async function commitTitle() {
+    const nextTitle = draftTitle.trim();
+    if (!activeSession || !nextTitle || nextTitle === activeSession.title) {
+      setDraftTitle(activeSession?.title ?? "ADK Studio");
+      setIsEditingTitle(false);
+      return;
+    }
+
+    try {
+      await renameSession(activeSession.id, nextTitle);
+      toast.success("Session renamed");
+    } catch {
+      setDraftTitle(activeSession.title);
+      toast.error("Rename failed");
+    } finally {
+      setIsEditingTitle(false);
+    }
+  }
+
+  async function handleModelChange(nextModel: string) {
+    setModel(nextModel);
+    if (!activeSession) return;
+
+    try {
+      await updateSessionModel(activeSession.id, nextModel);
+      toast.success("Model updated");
+    } catch {
+      setModel(activeSession.model);
+      toast.error("Could not update the model");
+    }
+  }
 
   return (
     <div className={styles.topbar}>
       <div className={styles.left}>
-        <span className={styles.sessionName}>
-          {activeSession?.title ?? "ADK Studio"}
-        </span>
-        {activeSession && (
-          <span className={styles.msgCount}>
-            {activeSession.message_count} messages
-          </span>
-        )}
+        <div className={styles.sessionBlock}>
+          {isEditingTitle && activeSession ? (
+            <input
+              ref={inputRef}
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void commitTitle();
+                if (event.key === "Escape") {
+                  setDraftTitle(activeSession.title);
+                  setIsEditingTitle(false);
+                }
+              }}
+              className={styles.titleInput}
+              maxLength={80}
+            />
+          ) : (
+            <button
+              className={styles.titleButton}
+              onClick={() => activeSession && setIsEditingTitle(true)}
+              disabled={!activeSession}
+              title={activeSession ? "Rename session" : "Create a session to rename it"}
+            >
+              <span className={styles.sessionName}>
+                {activeSession?.title ?? "ADK Studio"}
+              </span>
+              {activeSession && <PencilLine size={13} />}
+            </button>
+          )}
+
+          <div className={styles.metaRow}>
+            <span className={styles.msgCount}>
+              {activeSession ? `${activeSession.message_count} messages` : "Ready for a new session"}
+            </span>
+            {toolCount > 0 && <span className={styles.metaBadge}>{toolCount} tool runs</span>}
+            {transferCount > 0 && <span className={styles.metaBadge}>{transferCount} handoffs</span>}
+          </div>
+        </div>
       </div>
 
       <div className={styles.right}>
         <div className={styles.statusPill}>
-          <span className={styles.statusDot} />
-          ADK Ready
+          <span className={`${styles.statusDot} ${isLoading ? styles.statusDotBusy : ""}`} />
+          {isLoading ? "Agent working" : "ADK ready"}
         </div>
+
+        <label className={styles.modelWrap}>
+          <span className={styles.modelLabel}>Model</span>
+          <div className={styles.modelSelectWrap}>
+            <select
+              className={styles.modelSelect}
+              value={activeSession?.model ?? selectedModel}
+              onChange={(event) => void handleModelChange(event.target.value)}
+              disabled={isLoadingModels}
+            >
+              {(models.length > 0 ? models : [selectedModel]).map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} className={styles.modelChevron} />
+          </div>
+        </label>
 
         <button
           className={`${styles.inspectorBtn} ${inspectorOpen ? styles.inspectorBtnActive : ""}`}
           onClick={onToggleInspector}
           title={inspectorOpen ? "Hide state inspector" : "Show state inspector"}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
-          </svg>
+          <PanelRightOpen size={14} />
           State
         </button>
       </div>

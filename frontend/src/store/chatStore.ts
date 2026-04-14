@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { MessageOut } from "../api/client";
+import type { MessageOut, SessionOut } from "../api/client";
 import type { AgentStep } from "../components/AgentSteps";
 
 export interface MessageWithSteps extends MessageOut {
@@ -7,15 +7,15 @@ export interface MessageWithSteps extends MessageOut {
 }
 
 interface ChatState {
-  sessions: any[];
+  sessions: SessionOut[];
   activeSessionId: string | null;
   messages: MessageWithSteps[];
   isLoading: boolean;
   selectedModel: string;
 
-  setSessions: (sessions: any[]) => void;
-  addSession: (session: any) => void;
-  updateSession: (session: any) => void;
+  setSessions: (sessions: SessionOut[]) => void;
+  addSession: (session: SessionOut) => void;
+  updateSession: (session: SessionOut) => void;
   removeSession: (id: string) => void;
 
   setActiveSession: (id: string | null) => void;
@@ -40,11 +40,11 @@ export const useChatStore = create<ChatState>((set) => ({
     set((s) => ({ sessions: [session, ...s.sessions] })),
   updateSession: (session) =>
     set((s) => ({
-      sessions: s.sessions.map((x: any) => (x.id === session.id ? session : x)),
+      sessions: s.sessions.map((x) => (x.id === session.id ? session : x)),
     })),
   removeSession: (id) =>
     set((s) => ({
-      sessions: s.sessions.filter((x: any) => x.id !== id),
+      sessions: s.sessions.filter((x) => x.id !== id),
       activeSessionId: s.activeSessionId === id ? null : s.activeSessionId,
       messages: s.activeSessionId === id ? [] : s.messages,
     })),

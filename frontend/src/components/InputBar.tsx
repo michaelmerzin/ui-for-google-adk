@@ -1,41 +1,53 @@
 import { useEffect, useRef, useState } from "react";
-import { SendHorizonal, Square } from "lucide-react";
+import { SendHorizonal, Square, RotateCcw } from "lucide-react";
 import { useChatStore } from "../store/chatStore";
 import { useChat } from "../hooks/useChat";
 import styles from "./InputBar.module.css";
 
+interface QuickPromptDetail {
+  text: string;
+  autoSend?: boolean;
+}
+
 export default function InputBar() {
   const [text, setText] = useState("");
+  const [lastSubmitted, setLastSubmitted] = useState("");
   const { isLoading } = useChatStore();
   const { sendMessage } = useChat();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Listen for quick prompt events from ChatArea
   useEffect(() => {
-    function handler(e: Event) {
-      const value = (e as CustomEvent<string>).detail;
+    function handler(event: Event) {
+      const detail = (event as CustomEvent<QuickPromptDetail>).detail;
+      const value = detail?.text ?? "";
       setText(value);
-      textareaRef.current?.focus();
-      // Auto-send quick prompts
-      setTimeout(() => {
-        sendMessage(value);
-        setText("");
-      }, 80);
+      requestAnimationFrame(() => {
+        autoResize();
+        textareaRef.current?.focus();
+      });
+
+      if (detail?.autoSend) {
+        window.setTimeout(() => {
+          void submitMessage(value);
+        }, 80);
+      }
     }
+
     window.addEventListener("adk:quickprompt", handler);
     return () => window.removeEventListener("adk:quickprompt", handler);
   }, [sendMessage]);
 
   function autoResize() {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+    const element = textareaRef.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, 160)}px`;
   }
 
-  async function handleSend() {
-    const trimmed = text.trim();
+  async function submitMessage(explicitText?: string) {
+    const trimmed = (explicitText ?? text).trim();
     if (!trimmed || isLoading) return;
+    setLastSubmitted(trimmed);
     setText("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -44,10 +56,10 @@ export default function InputBar() {
     textareaRef.current?.focus();
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void submitMessage();
     }
   }
 
@@ -55,13 +67,28 @@ export default function InputBar() {
 
   return (
     <div className={styles.bar}>
+      <div className={styles.utilityRow}>
+        {lastSubmitted && !text && (
+          <button className={styles.reuseBtn} onClick={() => setText(lastSubmitted)}>
+            <RotateCcw size={12} />
+            Reuse last prompt
+          </button>
+        )}
+        <span className={styles.hint}>
+          Enter to send, Shift+Enter for newline
+        </span>
+      </div>
+
       <div className={`${styles.wrapper} ${isLoading ? styles.wrapperLoading : ""}`}>
         <textarea
           ref={textareaRef}
           className={styles.textarea}
-          placeholder="Message your agent… (Shift+Enter for new line)"
+          placeholder="Message your agent with a task, question, or instruction..."
           value={text}
-          onChange={(e) => { setText(e.target.value); autoResize(); }}
+          onChange={(event) => {
+            setText(event.target.value);
+            autoResize();
+          }}
           onKeyDown={handleKeyDown}
           rows={1}
           disabled={isLoading}
@@ -73,18 +100,14 @@ export default function InputBar() {
           )}
           <button
             className={`${styles.sendBtn} ${isLoading ? styles.sendBtnLoading : ""}`}
-            onClick={handleSend}
+            onClick={() => void submitMessage()}
             disabled={!text.trim() && !isLoading}
-            title={isLoading ? "Generating…" : "Send (Enter)"}
+            title={isLoading ? "Generating..." : "Send"}
           >
             {isLoading ? <Square size={14} fill="currentColor" /> : <SendHorizonal size={15} />}
           </button>
         </div>
       </div>
-
-      <p className={styles.hint}>
-        ADK Studio · google-adk 1.25.1 · litellm 1.82.0 · Enter to send, Shift+Enter for newline
-      </p>
     </div>
   );
 }
