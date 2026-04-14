@@ -7,73 +7,91 @@ Minimal Google ADK agent powered by Claude via LiteLLM.
 ```powershell
 cd adk_agent
 
-# Create and activate venv
 python -m venv .venv
 .venv\Scripts\activate
-
-# Install deps
 pip install -r requirements.txt
-
-# Configure
 copy .env.example .env
-notepad .env   # set your ANTHROPIC_API_KEY
+notepad .env
 ```
+
+Set your `ANTHROPIC_API_KEY` in `.env`.
 
 ## Run
 
 ```powershell
-# Option A — use the start script (handles everything)
+# Option A
 start.bat
 
-# Option B — manual
+# Option B
 .venv\Scripts\activate
 adk web --port 8001
 ```
 
-The ADK server starts on **http://localhost:8001**.
+The ADK server starts on `http://localhost:8001`.
 
-## Connect to the UI
+## Connect To The UI
 
-In the UI Configuration modal (admin only), set:
-- **ADK API URL** → `http://localhost:8001`
-- **ADK Agent Name** → `root_agent`
+Set these in the UI or backend config:
 
-Also update `backend/.env`:
+- `ADK API URL`: `http://localhost:8001`
+- `ADK Agent Name`: `root_agent`
+
+And in `backend/.env`:
+
 ```env
 ADK_BASE_URL=http://localhost:8001
 ADK_AGENT_NAME=root_agent
 ```
 
-Then restart uvicorn.
+Then restart the backend.
 
-## Adding tools
+## Included Tools
 
-Edit `tools.py` — add any Python function with a docstring and type hints.
-ADK automatically exposes it as a tool to the agent.
+- `get_current_time`
+- `calculate`
+- `search_knowledge_base`
+- `format_as_table`
+- `remember_note`
+- `read_saved_note`
+
+## Toy State Tool
+
+This repo now includes a tiny demo for ADK session state:
+
+- `remember_note(note, tool_context)` writes the note into session state as `user:last_note`
+- `read_saved_note(tool_context)` reads that value back
+
+Try these prompts in the UI:
+
+- `Remember this for the session: my favorite color is green`
+- `What note do you have saved for this session?`
+
+After running it, open the State Inspector and you should see:
+
+- `user:last_note`
+- `temp:last_note_saved_at`
+
+## Adding Tools
+
+Edit `root_agent/tools.py` and add any Python function with a docstring and type hints. Then add it to `ALL_TOOLS`.
 
 ```python
 def my_tool(query: str) -> dict:
-    """Describe what this tool does.
-    
-    Args:
-        query (str): The input query.
-    
-    Returns:
-        dict: The result.
-    """
+    """Describe what this tool does."""
     return {"status": "success", "result": "..."}
 
-# Add to ALL_TOOLS list at the bottom of tools.py
 ALL_TOOLS = [..., my_tool]
 ```
 
-## File structure
+## File Structure
 
-```
+```text
 adk_agent/
-├── agent.py        # Root agent definition — ADK entry point
-├── tools.py        # All tool functions
-├── .env.example    # Environment template
-├── requirements.txt
-└── start.bat       # Windows start script
+|-- root_agent/
+|   |-- agent.py
+|   |-- tools.py
+|   `-- __init__.py
+|-- .env.example
+|-- requirements.txt
+`-- start.bat
 ```
