@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { sessionsApi } from "../api/client";
 import { useAuthStore } from "../store/authStore";
@@ -24,6 +24,7 @@ export function useChat() {
   } = useChatStore();
 
   const accessToken = useAuthStore((s) => s.accessToken);
+  const streamAbortRef = useRef<AbortController | null>(null);
 
   const loadSessions = useCallback(async () => {
     const { data } = await sessionsApi.list();
@@ -86,6 +87,8 @@ export function useChat() {
         sessionId = session.id;
       }
 
+      const abortController = new AbortController();
+      streamAbortRef.current = abortController;
       setLoading(true);
 
       const userMsg: MessageWithSteps = {
@@ -114,16 +117,32 @@ export function useChat() {
           selectedModel,
           accessToken,
           updateLastAssistantMessage,
-          appendStepToLastMessage
+          appendStepToLastMessage,
+          abortController.signal
         );
 
         const { data: updatedSessions } = await sessionsApi.list();
         setSessions(updatedSessions);
       } catch (err: any) {
+        const wasAborted = err?.name === "AbortError" || abortController.signal.aborted;
+        if (wasAborted) {
+          const lastAssistant = [...useChatStore.getState().messages]
+            .reverse()
+            .find((message) => message.role === "assistant");
+          if (lastAssistant && !lastAssistant.content.trim()) {
+            updateLastAssistantMessage("Stopped.");
+          }
+          toast("Generation stopped");
+          return;
+        }
+
         const errMsg = err?.response?.data?.detail ?? err?.message ?? "Unknown error";
         updateLastAssistantMessage(`Warning: ${errMsg}`);
         toast.error("Failed to get response");
       } finally {
+        if (streamAbortRef.current === abortController) {
+          streamAbortRef.current = null;
+        }
         setLoading(false);
       }
     },
@@ -140,6 +159,10 @@ export function useChat() {
     ]
   );
 
+  const cancelMessage = useCallback(() => {
+    streamAbortRef.current?.abort();
+  }, []);
+
   return {
     loadSessions,
     loadMessages,
@@ -147,6 +170,7 @@ export function useChat() {
     deleteSession,
     renameSession,
     sendMessage,
+    cancelMessage,
     updateSessionModel,
   };
 }
@@ -157,7 +181,8 @@ async function streamMessage(
   model: string,
   token: string | null,
   onDelta: (content: string) => void,
-  onStep: (step: AgentStep) => void
+  onStep: (step: AgentStep) => void,
+  signal: AbortSignal
 ): Promise<void> {
   const resp = await fetch("/api/chat/send", {
     method: "POST",
@@ -166,6 +191,7 @@ async function streamMessage(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ session_id: sessionId, message, model, stream: true }),
+    signal,
   });
 
   if (!resp.ok || !resp.body) {
@@ -176,45 +202,63 @@ async function streamMessage(
   const decoder = new TextDecoder();
   let buffer = "";
   let accumulated = "";
+  const cancelReader = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  signal.addEventListener("abort", cancelReader, { once: true });
 
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      if (signal.aborted) {
+        throw abortError();
+      }
 
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
+      const { done, value } = await reader.read();
+      buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
 
-    for (const eventChunk of events) {
-      const payload = eventChunk
-        .split("\n")
-        .filter((line) => line.startsWith("data: "))
-        .map((line) => line.slice(6).trim())
-        .join("");
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
 
-      if (!payload) continue;
+      for (const eventChunk of events) {
+        const payload = eventChunk
+          .split("\n")
+          .filter((line) => line.startsWith("data: "))
+          .map((line) => line.slice(6).trim())
+          .join("");
 
-      try {
-        const json = JSON.parse(payload);
+        if (!payload) continue;
 
-        if (json.done) {
-          return;
+        try {
+          const json = JSON.parse(payload);
+
+          if (json.done) {
+            return;
+          }
+
+          if (json.delta) {
+            accumulated += json.delta;
+            onDelta(accumulated);
+          }
+
+          if (json.step) {
+            onStep(json.step as AgentStep);
+          }
+        } catch {
+          // Ignore malformed events so a partial chunk does not kill the stream.
         }
+      }
 
-        if (json.delta) {
-          accumulated += json.delta;
-          onDelta(accumulated);
-        }
-
-        if (json.step) {
-          onStep(json.step as AgentStep);
-        }
-      } catch {
-        // Ignore malformed events so a partial chunk does not kill the stream.
+      if (done) {
+        break;
       }
     }
-
-    if (done) {
-      break;
-    }
+  } finally {
+    signal.removeEventListener("abort", cancelReader);
   }
+}
+
+function abortError(): Error {
+  const err = new Error("Request aborted");
+  err.name = "AbortError";
+  return err;
 }

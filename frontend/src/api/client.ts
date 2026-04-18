@@ -91,6 +91,28 @@ export interface MessageOut {
   created_at: string;
 }
 
+export interface DependencyHealth {
+  configured: boolean;
+  reachable: boolean;
+  healthy: boolean;
+  status_code: number | null;
+  latency_ms: number | null;
+  checked_url: string | null;
+  error: string | null;
+}
+
+export interface HealthOut {
+  status: "ok" | "degraded" | "down";
+  backend: {
+    healthy: boolean;
+    version: string;
+  };
+  adk: DependencyHealth;
+  litellm: DependencyHealth;
+  adk_version: string;
+  litellm_version: string;
+}
+
 export const authApi = {
   login: (username: string, password: string) =>
     api.post<{ access_token: string; refresh_token: string }>("/auth/login", {
@@ -127,4 +149,8 @@ export const chatApi = {
       message,
       model,
     }),
+};
+
+export const systemApi = {
+  health: () => api.get<HealthOut>("/health"),
 };

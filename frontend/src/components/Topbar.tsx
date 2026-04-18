@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { ChevronDown, PencilLine, PanelRightOpen } from "lucide-react";
-import { chatApi } from "../api/client";
+import { chatApi, systemApi, type DependencyHealth, type HealthOut } from "../api/client";
 import { useChatStore } from "../store/chatStore";
 import { useChat } from "../hooks/useChat";
 import styles from "./Topbar.module.css";
@@ -19,6 +19,8 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [runtimeHealth, setRuntimeHealth] = useState<HealthOut | null>(null);
+  const [healthError, setHealthError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -39,12 +41,88 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
     inputRef.current?.select();
   }, [isEditingTitle]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function pollHealth() {
+      try {
+        const { data } = await systemApi.health();
+        if (!active) return;
+        setRuntimeHealth(data);
+        setHealthError(false);
+      } catch {
+        if (!active) return;
+        setHealthError(true);
+      }
+    }
+
+    void pollHealth();
+    const intervalId = window.setInterval(() => {
+      void pollHealth();
+    }, 15000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const assistantSteps = useMemo(
     () => messages.flatMap((message) => message.steps ?? []),
     [messages]
   );
   const toolCount = assistantSteps.filter((step) => step.type === "tool_call").length;
   const transferCount = assistantSteps.filter((step) => step.type === "agent_transfer").length;
+  const runtimeStatus = useMemo(() => {
+    if (isLoading) {
+      return {
+        label: "Agent working",
+        tone: "busy" as const,
+        detail: "The current request is still running.",
+      };
+    }
+
+    if (healthError) {
+      return {
+        label: "Backend offline",
+        tone: "down" as const,
+        detail: "Cannot reach /health endpoint.",
+      };
+    }
+
+    if (!runtimeHealth) {
+      return {
+        label: "Checking runtime",
+        tone: "checking" as const,
+        detail: "Checking ADK and LiteLLM health.",
+      };
+    }
+
+    const adkUp = runtimeHealth.adk.healthy;
+    const litellmUp = runtimeHealth.litellm.healthy;
+    const detail = `${probeLabel("ADK", runtimeHealth.adk)} | ${probeLabel("LiteLLM", runtimeHealth.litellm)}`;
+
+    if (adkUp && litellmUp) {
+      return { label: "ADK + LiteLLM online", tone: "ok" as const, detail };
+    }
+    if (adkUp) {
+      return { label: "ADK online", tone: "warn" as const, detail };
+    }
+    if (litellmUp) {
+      return { label: "LiteLLM fallback online", tone: "warn" as const, detail };
+    }
+    return { label: "No AI runtime online", tone: "down" as const, detail };
+  }, [isLoading, healthError, runtimeHealth]);
+
+  const statusDotClass = [
+    styles.statusDot,
+    runtimeStatus.tone === "busy" ? styles.statusDotBusy : "",
+    runtimeStatus.tone === "warn" ? styles.statusDotWarn : "",
+    runtimeStatus.tone === "down" ? styles.statusDotDown : "",
+    runtimeStatus.tone === "checking" ? styles.statusDotChecking : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   async function commitTitle() {
     const nextTitle = draftTitle.trim();
@@ -123,9 +201,9 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
       </div>
 
       <div className={styles.right}>
-        <div className={styles.statusPill}>
-          <span className={`${styles.statusDot} ${isLoading ? styles.statusDotBusy : ""}`} />
-          {isLoading ? "Agent working" : "ADK ready"}
+        <div className={styles.statusPill} title={runtimeStatus.detail}>
+          <span className={statusDotClass} />
+          {runtimeStatus.label}
         </div>
 
         <label className={styles.modelWrap}>
@@ -158,4 +236,17 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
       </div>
     </div>
   );
+}
+
+function probeLabel(name: string, probe: DependencyHealth): string {
+  if (!probe.configured) {
+    return `${name}: not configured`;
+  }
+  if (!probe.reachable) {
+    return `${name}: unreachable`;
+  }
+
+  const code = probe.status_code ?? "n/a";
+  const latency = probe.latency_ms != null ? `${probe.latency_ms}ms` : "n/a";
+  return `${name}: ${code} (${latency})`;
 }

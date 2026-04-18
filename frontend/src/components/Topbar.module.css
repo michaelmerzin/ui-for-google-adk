@@ -124,6 +124,21 @@
   box-shadow: 0 0 8px rgba(247, 196, 79, 0.55);
 }
 
+.statusDotWarn {
+  background: var(--yellow);
+  box-shadow: 0 0 8px rgba(247, 196, 79, 0.55);
+}
+
+.statusDotDown {
+  background: var(--red);
+  box-shadow: 0 0 8px rgba(247, 95, 95, 0.6);
+}
+
+.statusDotChecking {
+  background: var(--text3);
+  box-shadow: none;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }

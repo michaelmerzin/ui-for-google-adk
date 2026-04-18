@@ -13,7 +13,7 @@ export default function InputBar() {
   const [text, setText] = useState("");
   const [lastSubmitted, setLastSubmitted] = useState("");
   const { isLoading } = useChatStore();
-  const { sendMessage } = useChat();
+  const { sendMessage, cancelMessage } = useChat();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -54,6 +54,14 @@ export default function InputBar() {
     }
     await sendMessage(trimmed);
     textareaRef.current?.focus();
+  }
+
+  function handleSendButton() {
+    if (isLoading) {
+      cancelMessage();
+      return;
+    }
+    void submitMessage();
   }
 
   function handleKeyDown(event: React.KeyboardEvent) {
@@ -100,9 +108,9 @@ export default function InputBar() {
           )}
           <button
             className={`${styles.sendBtn} ${isLoading ? styles.sendBtnLoading : ""}`}
-            onClick={() => void submitMessage()}
+            onClick={handleSendButton}
             disabled={!text.trim() && !isLoading}
-            title={isLoading ? "Generating..." : "Send"}
+            title={isLoading ? "Stop generation" : "Send"}
           >
             {isLoading ? <Square size={14} fill="currentColor" /> : <SendHorizonal size={15} />}
           </button>
