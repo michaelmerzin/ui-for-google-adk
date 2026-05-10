@@ -19,6 +19,38 @@
   flex-shrink: 0;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sessionsActions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text3);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.closeBtn:hover {
+  background: rgba(247, 95, 95, 0.1);
+  border-color: rgba(247, 95, 95, 0.3);
+  color: var(--red);
+}
+
 .logo {
   display: flex;
   align-items: center;

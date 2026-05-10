@@ -1,24 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { ChevronDown, PencilLine, PanelRightOpen } from "lucide-react";
-import { chatApi, systemApi, type DependencyHealth, type HealthOut } from "../api/client";
+import { PencilLine, PanelRightOpen, PanelLeftOpen } from "lucide-react";
+import { systemApi, type DependencyHealth, type HealthOut } from "../api/client";
 import { useChatStore } from "../store/chatStore";
+import { useAuthStore } from "../store/authStore";
 import { useChat } from "../hooks/useChat";
 import styles from "./Topbar.module.css";
 
 interface Props {
   inspectorOpen: boolean;
   onToggleInspector: () => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
-export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
-  const { sessions, activeSessionId, messages, isLoading, selectedModel, setModel } = useChatStore();
-  const { renameSession, updateSessionModel } = useChat();
+export default function Topbar({ inspectorOpen, onToggleInspector, sidebarOpen, onToggleSidebar }: Props) {
+  const { sessions, activeSessionId, messages, isLoading } = useChatStore();
+  const { renameSession } = useChat();
+  const user = useAuthStore((s) => s.user);
   const activeSession = sessions.find((session) => session.id === activeSessionId) ?? null;
   const [draftTitle, setDraftTitle] = useState(activeSession?.title ?? "ADK Studio");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [models, setModels] = useState<string[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [runtimeHealth, setRuntimeHealth] = useState<HealthOut | null>(null);
   const [healthError, setHealthError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,14 +28,6 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
   useEffect(() => {
     setDraftTitle(activeSession?.title ?? "ADK Studio");
   }, [activeSession?.title]);
-
-  useEffect(() => {
-    setIsLoadingModels(true);
-    chatApi.models()
-      .then(({ data }) => setModels(data.models))
-      .catch(() => toast.error("Could not load models"))
-      .finally(() => setIsLoadingModels(false));
-  }, []);
 
   useEffect(() => {
     if (!isEditingTitle) return;
@@ -73,6 +67,7 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
   );
   const toolCount = assistantSteps.filter((step) => step.type === "tool_call").length;
   const transferCount = assistantSteps.filter((step) => step.type === "agent_transfer").length;
+
   const runtimeStatus = useMemo(() => {
     if (isLoading) {
       return {
@@ -143,22 +138,21 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
     }
   }
 
-  async function handleModelChange(nextModel: string) {
-    setModel(nextModel);
-    if (!activeSession) return;
-
-    try {
-      await updateSessionModel(activeSession.id, nextModel);
-      toast.success("Model updated");
-    } catch {
-      setModel(activeSession.model);
-      toast.error("Could not update the model");
-    }
-  }
+  const userAbbr = user?.username.slice(0, 2).toUpperCase() ?? "??";
 
   return (
     <div className={styles.topbar}>
       <div className={styles.left}>
+        {!sidebarOpen && (
+          <button
+            className={styles.sidebarToggle}
+            onClick={onToggleSidebar}
+            title="Open sidebar"
+          >
+            <PanelLeftOpen size={16} />
+          </button>
+        )}
+
         <div className={styles.sessionBlock}>
           {isEditingTitle && activeSession ? (
             <input
@@ -206,24 +200,10 @@ export default function Topbar({ inspectorOpen, onToggleInspector }: Props) {
           {runtimeStatus.label}
         </div>
 
-        <label className={styles.modelWrap}>
-          <span className={styles.modelLabel}>Model</span>
-          <div className={styles.modelSelectWrap}>
-            <select
-              className={styles.modelSelect}
-              value={activeSession?.model ?? selectedModel}
-              onChange={(event) => void handleModelChange(event.target.value)}
-              disabled={isLoadingModels}
-            >
-              {(models.length > 0 ? models : [selectedModel]).map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} className={styles.modelChevron} />
-          </div>
-        </label>
+        <div className={styles.userPill}>
+          <div className={styles.userPillAvatar}>{userAbbr}</div>
+          <span className={styles.userPillName}>{user?.username ?? "—"}</span>
+        </div>
 
         <button
           className={`${styles.inspectorBtn} ${inspectorOpen ? styles.inspectorBtnActive : ""}`}

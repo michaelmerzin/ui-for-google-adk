@@ -112,8 +112,7 @@ export default function ChatArea() {
               isStreaming={
                 isLoading &&
                 index === messages.length - 1 &&
-                message.role === "assistant" &&
-                message.content === ""
+                message.role === "assistant"
               }
             />
           ))}

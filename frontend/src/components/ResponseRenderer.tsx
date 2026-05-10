@@ -1,19 +1,14 @@
 import { useState } from "react";
+import MapView, { type Location } from "./MapView";
 import styles from "./ResponseRenderer.module.css";
 
 type Block =
   | { type: "text"; content: string }
   | { type: "code"; lang: string; content: string }
   | { type: "table"; headers: string[]; rows: string[][] }
-  | { type: "map"; locations: Location[] }
+  | { type: "map_table"; locations: Location[]; headers: string[]; rows: string[][] }
   | { type: "json"; content: string }
   | { type: "list"; ordered: boolean; items: string[] };
-
-interface Location {
-  name: string;
-  lat: number;
-  lng: number;
-}
 
 export default function ResponseRenderer({ content }: { content: string }) {
   const blocks = parseBlocks(content);
@@ -34,8 +29,8 @@ function BlockRenderer({ block }: { block: Block }) {
       return <CodeBlock lang={block.lang} content={block.content} />;
     case "table":
       return <TableBlock headers={block.headers} rows={block.rows} />;
-    case "map":
-      return <MapBlock locations={block.locations} />;
+    case "map_table":
+      return <MapTableBlock locations={block.locations} headers={block.headers} rows={block.rows} />;
     case "json":
       return <JsonBlock content={block.content} />;
     case "list":
@@ -98,62 +93,46 @@ function TableBlock({ headers, rows }: { headers: string[]; rows: string[][] }) 
   );
 }
 
-function MapBlock({ locations }: { locations: Location[] }) {
-  const [selected, setSelected] = useState<Location | null>(null);
-  const active = selected ?? locations[0];
-  const center = locations.length === 1
-    ? locations[0]
-    : {
-        lat: locations.reduce((sum, location) => sum + location.lat, 0) / locations.length,
-        lng: locations.reduce((sum, location) => sum + location.lng, 0) / locations.length,
-      };
-  const zoom = locations.length === 1 ? 14 : 6;
-
-  const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${
-    active.lng - 0.05
-  }%2C${active.lat - 0.05}%2C${active.lng + 0.05}%2C${active.lat + 0.05}&layer=mapnik&marker=${active.lat}%2C${active.lng}`;
+function MapTableBlock({
+  locations,
+  headers,
+  rows,
+}: {
+  locations: Location[];
+  headers: string[];
+  rows: string[][];
+}) {
+  const [view, setView] = useState<"map" | "table">("map");
 
   return (
     <div className={styles.mapBlock}>
       <div className={styles.mapHeader}>
         <span className={styles.mapTitle}>
-          Map view for {locations.length} location{locations.length !== 1 ? "s" : ""}
+          {locations.length} location{locations.length !== 1 ? "s" : ""}
         </span>
-      </div>
 
-      <div className={styles.locationList}>
-        {locations.map((location, index) => (
+        <div className={styles.viewToggle}>
           <button
-            key={index}
-            className={`${styles.locationItem} ${selected?.name === location.name ? styles.locationSelected : ""}`}
-            onClick={() => setSelected(selected?.name === location.name ? null : location)}
+            className={`${styles.viewBtn} ${view === "map" ? styles.viewBtnActive : ""}`}
+            onClick={() => setView("map")}
           >
-            <span className={styles.locationPin}>Pin</span>
-            <span className={styles.locationName}>{location.name}</span>
-            <span className={styles.locationCoords}>
-              {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-            </span>
+            Map
           </button>
-        ))}
+          <button
+            className={`${styles.viewBtn} ${view === "table" ? styles.viewBtnActive : ""}`}
+            onClick={() => setView("table")}
+          >
+            Table
+          </button>
+        </div>
       </div>
 
-      <iframe
-        className={styles.mapIframe}
-        src={selected ? mapUrl : `https://www.openstreetmap.org/export/embed.html?bbox=${
-          center.lng - 0.05
-        }%2C${center.lat - 0.05}%2C${center.lng + 0.05}%2C${center.lat + 0.05}&layer=mapnik&marker=${center.lat}%2C${center.lng}`}
-        title="Map"
-        loading="lazy"
-      />
+      {view === "map" ? (
+        <MapView locations={locations} />
+      ) : (
+        <TableBlock headers={headers} rows={rows} />
+      )}
 
-      <a
-        className={styles.mapLink}
-        href={`https://www.openstreetmap.org/?mlat=${active.lat}&mlon=${active.lng}#map=${zoom}/${active.lat}/${active.lng}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Open in OpenStreetMap
-      </a>
     </div>
   );
 }
@@ -223,17 +202,19 @@ function parseBlocks(raw: string): Block[] {
     }
 
     if (line.includes("|") && index + 1 < lines.length && lines[index + 1].match(/^\|[\s\-|]+\|$/)) {
-      const headers = line.split("|").filter(Boolean).map((header) => header.trim());
+      const headers = line.split("|").filter(Boolean).map((h) => h.trim());
       index += 2;
       const rows: string[][] = [];
       while (index < lines.length && lines[index].includes("|")) {
-        rows.push(lines[index].split("|").filter(Boolean).map((cell) => cell.trim()));
+        rows.push(lines[index].split("|").filter(Boolean).map((c) => c.trim()));
         index++;
       }
       const locations = extractLocationsFromTable(headers, rows);
-      blocks.push(locations.length > 0
-        ? { type: "map", locations }
-        : { type: "table", headers, rows });
+      if (locations.length > 0) {
+        blocks.push({ type: "map_table", locations, headers, rows });
+      } else {
+        blocks.push({ type: "table", headers, rows });
+      }
       continue;
     }
 
@@ -257,28 +238,13 @@ function parseBlocks(raw: string): Block[] {
       continue;
     }
 
-    const coords = extractCoordinatesFromText(line);
-    if (coords.length > 0) {
-      const locations: Location[] = [...coords];
-      index++;
-      while (index < lines.length) {
-        const moreCoords = extractCoordinatesFromText(lines[index]);
-        if (moreCoords.length === 0) break;
-        locations.push(...moreCoords);
-        index++;
-      }
-      blocks.push({ type: "map", locations });
-      continue;
-    }
-
     const textLines: string[] = [];
     while (
       index < lines.length &&
       !lines[index].startsWith("```") &&
       !lines[index].includes("|") &&
       !lines[index].match(/^[\-\*\+] /) &&
-      !lines[index].match(/^\d+\. /) &&
-      extractCoordinatesFromText(lines[index]).length === 0
+      !lines[index].match(/^\d+\. /)
     ) {
       textLines.push(lines[index]);
       index++;
@@ -301,32 +267,13 @@ function isJson(str: string): boolean {
   }
 }
 
-function extractCoordinatesFromText(line: string): Location[] {
-  const results: Location[] = [];
-  const pattern = /([A-Za-z\s]+)?:?\s*\(?(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\)?/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(line)) !== null) {
-    const lat = parseFloat(match[2]);
-    const lng = parseFloat(match[3]);
-    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      results.push({
-        name: match[1]?.trim() || `${lat}, ${lng}`,
-        lat,
-        lng,
-      });
-    }
-  }
-
-  return results;
-}
 
 function extractLocationsFromTable(headers: string[], rows: string[][]): Location[] {
-  const lowerHeaders = headers.map((header) => header.toLowerCase());
-  const latIndex = lowerHeaders.findIndex((header) => header.includes("lat"));
-  const lngIndex = lowerHeaders.findIndex((header) => header.includes("lon") || header.includes("lng"));
+  const lowerHeaders = headers.map((h) => h.toLowerCase());
+  const latIndex = lowerHeaders.findIndex((h) => h.includes("lat"));
+  const lngIndex = lowerHeaders.findIndex((h) => h.includes("lon") || h.includes("lng"));
   const nameIndex = lowerHeaders.findIndex(
-    (header) => header.includes("name") || header.includes("city") || header.includes("location") || header.includes("place")
+    (h) => h.includes("name") || h.includes("city") || h.includes("location") || h.includes("place")
   );
 
   if (latIndex === -1 || lngIndex === -1) return [];
@@ -335,11 +282,7 @@ function extractLocationsFromTable(headers: string[], rows: string[][]): Locatio
     const lat = parseFloat(row[latIndex]);
     const lng = parseFloat(row[lngIndex]);
     if (Number.isNaN(lat) || Number.isNaN(lng)) return [];
-    return [{
-      name: nameIndex !== -1 ? row[nameIndex] : `${lat}, ${lng}`,
-      lat,
-      lng,
-    }];
+    return [{ name: nameIndex !== -1 ? row[nameIndex] : `${lat}, ${lng}`, lat, lng }];
   });
 }
 

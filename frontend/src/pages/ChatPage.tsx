@@ -17,6 +17,7 @@ export default function ChatPage() {
   const { activeSessionId } = useChatStore();
   const { setUser, logout } = useAuthStore();
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     authApi.me()
@@ -32,11 +33,13 @@ export default function ChatPage() {
 
   return (
     <div className={styles.root}>
-      <Sidebar />
+      {sidebarOpen && <Sidebar onClose={() => setSidebarOpen(false)} />}
       <div className={styles.main}>
         <Topbar
           inspectorOpen={inspectorOpen}
           onToggleInspector={() => setInspectorOpen(o => !o)}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen(o => !o)}
         />
         <div className={styles.chatWrapper}>
           <div className={styles.chatCol}>

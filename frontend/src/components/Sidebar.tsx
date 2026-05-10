@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Trash2, Plus, LogOut, Users, Settings, ChevronDown } from "lucide-react";
+import { Trash2, Plus, LogOut, Users, Settings, ChevronDown, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
@@ -9,7 +9,11 @@ import UserMgmtModal from "./UserMgmtModal";
 import ConfigModal from "./ConfigModal";
 import styles from "./Sidebar.module.css";
 
-export default function Sidebar() {
+interface Props {
+  onClose: () => void;
+}
+
+export default function Sidebar({ onClose }: Props) {
   const navigate = useNavigate();
   const { sessions, activeSessionId, setActiveSession } = useChatStore();
   const { user, logout } = useAuthStore();
@@ -106,9 +110,14 @@ export default function Sidebar() {
 
         <div className={styles.sessionsHeader}>
           <span className={styles.sessionsLabel}>Sessions</span>
-          <button className={styles.newBtn} onClick={handleNewSession}>
-            <Plus size={13} /> New
-          </button>
+          <div className={styles.sessionsActions}>
+            <button className={styles.closeBtn} onClick={onClose} title="Close sidebar">
+              <X size={13} />
+            </button>
+            <button className={styles.newBtn} onClick={handleNewSession}>
+              <Plus size={13} /> New
+            </button>
+          </div>
         </div>
 
         <div className={styles.sessionsList}>

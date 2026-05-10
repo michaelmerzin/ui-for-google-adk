@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import toast from "react-hot-toast";
-import { sessionsApi } from "../api/client";
+import { API_BASE_URL, sessionsApi } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { useChatStore, type MessageWithSteps } from "../store/chatStore";
 import type { AgentStep } from "../components/AgentSteps";
@@ -184,7 +184,7 @@ async function streamMessage(
   onStep: (step: AgentStep) => void,
   signal: AbortSignal
 ): Promise<void> {
-  const resp = await fetch("/api/chat/send", {
+  const resp = await fetch(`${API_BASE_URL}/chat/send`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

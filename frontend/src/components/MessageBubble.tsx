@@ -42,12 +42,12 @@ export default function MessageBubble({ message, username, isStreaming }: Props)
         {!isUser && (message.steps?.length ?? 0) > 0 && (
           <AgentSteps
             steps={message.steps ?? []}
-            isStreaming={isStreaming === true && message.content === ""}
+            isStreaming={isStreaming === true}
           />
         )}
 
         <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.botBubble}`}>
-          {isStreaming && message.content === "" ? (
+          {isStreaming ? (
             <div className={styles.streamingDots}>
               <span />
               <span />
@@ -56,10 +56,7 @@ export default function MessageBubble({ message, username, isStreaming }: Props)
           ) : isUser ? (
             <span className={styles.userText}>{message.content}</span>
           ) : (
-            <>
-              <ResponseRenderer content={message.content} />
-              {isStreaming && <span className={styles.cursor} />}
-            </>
+            <ResponseRenderer content={message.content} />
           )}
         </div>
 

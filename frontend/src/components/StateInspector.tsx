@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import styles from "./StateInspector.module.css";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
+import { API_BASE_URL } from "../api/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ export default function StateInspector({ isOpen, onToggle }: Props) {
   const fetchState = useCallback(async () => {
     if (!activeSessionId) return;
     try {
-      const res = await fetch(`/api/sessions/${activeSessionId}/adk-state`, {
+      const res = await fetch(`${API_BASE_URL}/sessions/${activeSessionId}/adk-state`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) return;
